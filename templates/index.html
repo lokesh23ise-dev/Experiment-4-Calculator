@@ -1,86 +1,109 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>API Calculator - Keyboard Enabled</title>
+    <title>API Calculator - Full Expression</title>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding-top: 50px; background: #1a1a1a; color: white; }
-        .calc-box { background: #333; padding: 25px; border-radius: 15px; width: 300px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        input { width: 100%; margin-bottom: 15px; padding: 15px; font-size: 24px; text-align: right; background: #222; color: #0f0; border: 1px solid #444; box-sizing: border-box; }
-        .buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-        button { padding: 20px; font-size: 18px; cursor: pointer; background: #444; color: white; border: none; border-radius: 5px; transition: 0.2s; }
-        button:hover { background: #666; }
-        .operator { background: #555; font-weight: bold; color: #ff9500; }
-        .equal { background: #ff9500; color: white; grid-column: span 4; margin-top: 10px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; padding-top: 50px; background: #121212; color: white; }
+        .calc-box { background: #1e1e1e; padding: 25px; border-radius: 20px; width: 320px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); border: 1px solid #333; }
+        
+        /* The Display Area */
+        .screen { background: #252525; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: right; border: 1px solid #444; }
+        #expression { color: #888; font-size: 14px; min-height: 20px; margin-bottom: 5px; }
+        #display { color: #0f0; font-size: 32px; font-weight: bold; overflow: hidden; }
+
+        .buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        button { padding: 20px; font-size: 20px; cursor: pointer; background: #333; color: white; border: none; border-radius: 10px; transition: 0.1s; }
+        button:hover { background: #444; }
+        .operator { color: #ff9500; font-weight: bold; background: #2a2a2a; }
+        .equal { background: #ff9500; color: white; grid-column: span 4; margin-top: 10px; font-weight: bold; }
         .equal:hover { background: #e68600; }
-        p { color: #888; font-size: 12px; margin-top: 15px; }
     </style>
 </head>
 <body>
     <div class="calc-box">
-        <input type="text" id="display" disabled placeholder="0">
+        <div class="screen">
+            <div id="expression"></div> <div id="display">0</div>    </div>
+        
         <div class="buttons">
-            <button onclick="press('7')">7</button><button onclick="press('8')">8</button><button onclick="press('9')">9</button><button class="operator" onclick="setOp('div')">/</button>
-            <button onclick="press('4')">4</button><button onclick="press('5')">5</button><button onclick="press('6')">6</button><button class="operator" onclick="setOp('mul')">*</button>
-            <button onclick="press('1')">1</button><button onclick="press('2')">2</button><button onclick="press('3')">3</button><button class="operator" onclick="setOp('sub')">-</button>
-            <button onclick="clearCalc()">C</button><button onclick="press('0')">0</button><button onclick="press('.')">.</button><button class="operator" onclick="setOp('add')">+</button>
+            <button onclick="press('7')">7</button><button onclick="press('8')">8</button><button onclick="press('9')">9</button><button class="operator" onclick="setOp('div', '/')">/</button>
+            <button onclick="press('4')">4</button><button onclick="press('5')">5</button><button onclick="press('6')">6</button><button class="operator" onclick="setOp('mul', '*')">*</button>
+            <button onclick="press('1')">1</button><button onclick="press('2')">2</button><button onclick="press('3')">3</button><button class="operator" onclick="setOp('sub', '-')">-</button>
+            <button onclick="clearCalc()">C</button><button onclick="press('0')">0</button><button onclick="press('.')">.</button><button class="operator" onclick="setOp('add', '+')">+</button>
             <button class="equal" onclick="sendToAPI()">CALCULATE (Enter)</button>
         </div>
     </div>
-    <p>Tip: Use your NumPad or Keyboard (+, -, *, /, Enter, Backspace)</p>
 
     <script>
         let currentNum = ''; 
         let prevNum = ''; 
         let operation = '';
+        let opSymbol = '';
+
+        const displayDiv = document.getElementById('display');
+        const expressionDiv = document.getElementById('expression');
 
         function press(num) { 
             currentNum += num; 
-            document.getElementById('display').value = currentNum; 
+            displayDiv.innerText = currentNum;
+            updateExpression();
         }
 
-        function setOp(op) { 
-            if (currentNum === '') return;
-            prevNum = currentNum; 
-            currentNum = ''; 
-            operation = op; 
-            document.getElementById('display').value = '';
+        function setOp(op, symbol) { 
+            if (currentNum === '' && prevNum === '') return;
+            if (currentNum !== '') {
+                prevNum = currentNum;
+                currentNum = '';
+            }
+            operation = op;
+            opSymbol = symbol;
+            updateExpression();
+            displayDiv.innerText = '0';
+        }
+
+        function updateExpression() {
+            expressionDiv.innerText = `${prevNum} ${opSymbol} ${currentNum}`;
         }
 
         function clearCalc() { 
-            currentNum = ''; prevNum = ''; operation = ''; 
-            document.getElementById('display').value = ''; 
+            currentNum = ''; prevNum = ''; operation = ''; opSymbol = '';
+            displayDiv.innerText = '0'; 
+            expressionDiv.innerText = '';
         }
 
         async function sendToAPI() {
             if (!prevNum || !currentNum || !operation) return;
             
-            const response = await fetch('/calculate', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ num1: prevNum, num2: currentNum, operation: operation })
-            });
-            const data = await response.json();
-            document.getElementById('display').value = data.result;
-            currentNum = data.result.toString();
-            prevNum = '';
-            operation = '';
+            try {
+                const response = await fetch('/calculate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ num1: prevNum, num2: currentNum, operation: operation })
+                });
+                const data = await response.json();
+                
+                // Show final result
+                displayDiv.innerText = data.result;
+                expressionDiv.innerText = `${prevNum} ${opSymbol} ${currentNum} =`;
+                
+                // Prepare for next calculation
+                currentNum = data.result.toString();
+                prevNum = '';
+                operation = '';
+                opSymbol = '';
+            } catch (err) {
+                displayDiv.innerText = "Error";
+            }
         }
 
-        // --- KEYBOARD SUPPORT LOGIC ---
-        document.addEventListener('keydown', (event) => {
-            const key = event.key;
-
-            if (/[0-9.]/.test(key)) { press(key); }
-            else if (key === '+') { setOp('add'); }
-            else if (key === '-') { setOp('sub'); }
-            else if (key === '*') { setOp('mul'); }
-            else if (key === '/') { setOp('div'); event.preventDefault(); } // Prevents "Find" shortcut
-            else if (key === 'Enter' || key === '=') { sendToAPI(); }
-            else if (key === 'Escape' || key === 'c' || key === 'C') { clearCalc(); }
-            else if (key === 'Backspace') { 
-                currentNum = currentNum.slice(0, -1);
-                document.getElementById('display').value = currentNum;
-            }
+        // Keyboard Support
+        document.addEventListener('keydown', (e) => {
+            if (/[0-9.]/.test(e.key)) press(e.key);
+            else if (e.key === '+') setOp('add', '+');
+            else if (e.key === '-') setOp('sub', '-');
+            else if (e.key === '*') setOp('mul', '*');
+            else if (e.key === '/') { setOp('div', '/'); e.preventDefault(); }
+            else if (e.key === 'Enter') sendToAPI();
+            else if (e.key === 'Escape') clearCalc();
         });
     </script>
 </body>
